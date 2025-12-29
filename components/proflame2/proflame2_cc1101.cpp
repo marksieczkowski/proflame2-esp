@@ -211,15 +211,20 @@ void ProFlame2Component::reset_cc1101() {
     // NOTE: The "proper" sequence includes waiting for SO(MISO) to go low.
     // In ESPHome we don't have direct access to SO level here, so we keep
     // timings generous and rely on subsequent register reads for sanity.
+    // 
+    // IMPORTANT: In ESP-IDF, we must ensure enable/disable pairs are matched.
+    // Don't call disable() without a prior enable().
 
-    this->disable();
+    // Ensure CS is high initially (but don't call disable if not enabled)
     delayMicroseconds(5);
 
+    // Toggle CS: high -> low -> high
     this->enable();
     delayMicroseconds(10);
     this->disable();
     delayMicroseconds(40);
 
+    // Send reset strobe
     this->enable();
     this->write_byte(CC1101_SRES);
     this->disable();
