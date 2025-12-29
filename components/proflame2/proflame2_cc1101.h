@@ -141,6 +141,7 @@ class ProFlame2Component : public Component,
     void encode_manchester(uint8_t *input, uint8_t *output, size_t input_len);
 
  protected:
+    bool spi_ready_{true};
     // CC1101 communication methods
     // void write_register(uint8_t reg, uint8_t value);
     // uint8_t read_register(uint8_t reg);

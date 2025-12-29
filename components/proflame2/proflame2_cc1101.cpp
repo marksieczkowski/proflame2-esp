@@ -75,17 +75,8 @@ void ProFlame2Component::setup() {
     ESP_LOGCONFIG(TAG, "Setting up ProFlame 2 CC1101...");
     
     this->spi_setup();
-    
-    // Ensure SPI bus is in a clean state after setup
-    // In ESP-IDF, spi_setup() may leave the bus in an inconsistent state
-    // We do a dummy enable/disable cycle to ensure the bus lock is properly initialized
-    #ifdef USE_ESP_IDF
-    // Perform a dummy transaction to ensure bus is in known state
-    // This ensures the bus lock mechanism is properly initialized
-    this->enable();
-    this->disable();
-    #endif
-    
+    this->spi_ready_ = true;
+        
     if (this->gdo0_pin_ != nullptr) {
         this->gdo0_pin_->setup();
         this->gdo0_pin_->pin_mode(gpio::FLAG_INPUT);
@@ -160,6 +151,10 @@ void ProFlame2Component::loop() {
 
 void ProFlame2Component::dump_config() {
     ESP_LOGCONFIG(TAG, "ProFlame 2 CC1101:");
+    if (!this->spi_ready_) {
+        ESP_LOGW(TAG, "SPI not ready yet, skipping CC1101 reads");
+        return;
+    }
     ESP_LOGCONFIG(TAG, "  Serial Number: 0x%08X", this->serial_number_);
     if (this->gdo0_pin_ != nullptr) {
         LOG_PIN("  GDO0 Pin: ", this->gdo0_pin_);
@@ -365,7 +360,7 @@ void ProFlame2Component::encode_manchester(uint8_t *input, uint8_t *output, size
     // Padding (Z) -> 00
     
     int out_index = 0;
-    memset(output, 0, 46);  // 182 bits = 23 bytes
+    memset(output, 0, 46);  // 182 bits = 23 bytes - might need to be this: memset(output, 0, 23);
     
     for (size_t i = 0; i < input_bits; i++) {
         int byte_index = i / 8;
@@ -403,6 +398,11 @@ void ProFlame2Component::encode_manchester(uint8_t *input, uint8_t *output, size
 }
 
 void ProFlame2Component::transmit_command() {
+    if (!this->spi_ready_) {
+        ESP_LOGE(TAG, "SPI not ready, skipping transmission");
+        return;
+    }
+
     // Rate limiting
     uint32_t now = millis();
     if (now - this->last_transmission_ < MIN_TRANSMISSION_INTERVAL) {
