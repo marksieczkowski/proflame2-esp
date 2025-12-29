@@ -4,6 +4,9 @@
 #ifdef USE_ESP_IDF
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#define YIELD() taskYIELD()
+#else
+#define YIELD() yield()
 #endif
 
 namespace esphome {
@@ -128,7 +131,21 @@ void ProFlame2Component::setup() {
 }
 
 void ProFlame2Component::loop() {
-    this->service_tx_();
+    // Only service TX if it's actually running, otherwise yield to event loop
+    if (this->tx_state_ == TX_RUNNING) {
+        this->service_tx_();
+        // Small yield after servicing TX to allow event loop to process
+        YIELD();
+    } else {
+        // Longer yield when not transmitting to give event loop more time
+        // This prevents the loop from consuming too much CPU when idle
+        #ifdef USE_ESP_IDF
+        vTaskDelay(pdMS_TO_TICKS(10));  // Yield 10ms to scheduler for API/webserver
+        #else
+        // Arduino delay() internally calls yield(), so this is safe
+        delay(10);  // Yield 10ms for Arduino (non-blocking due to yield)
+        #endif
+    }
 }
 
 void ProFlame2Component::dump_config() {
@@ -555,6 +572,9 @@ void ProFlame2Component::service_tx_() {
             ESP_LOGD(TAG, "TX refill: wrote=%u free=%u txbytes=%u pos=%u/%u marc=0x%02X",
                      static_cast<unsigned>(chunk), static_cast<unsigned>(free), txbytes,
                      static_cast<unsigned>(this->tx_pos_), static_cast<unsigned>(this->tx_len_), marc);
+            
+            // Yield after FIFO refill to allow event loop to process
+            YIELD();
         }
     }
 
