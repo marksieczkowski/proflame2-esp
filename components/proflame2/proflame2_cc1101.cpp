@@ -76,6 +76,16 @@ void ProFlame2Component::setup() {
     
     this->spi_setup();
     
+    // Ensure SPI bus is in a clean state after setup
+    // In ESP-IDF, spi_setup() may leave the bus in an inconsistent state
+    // We do a dummy enable/disable cycle to ensure the bus lock is properly initialized
+    #ifdef USE_ESP_IDF
+    // Perform a dummy transaction to ensure bus is in known state
+    // This ensures the bus lock mechanism is properly initialized
+    this->enable();
+    this->disable();
+    #endif
+    
     if (this->gdo0_pin_ != nullptr) {
         this->gdo0_pin_->setup();
         this->gdo0_pin_->pin_mode(gpio::FLAG_INPUT);
