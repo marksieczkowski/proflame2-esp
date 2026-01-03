@@ -360,7 +360,7 @@ void ProFlame2Component::encode_manchester(uint8_t *input, uint8_t *output, size
     // Padding (Z) -> 00
     
     int out_index = 0;
-    memset(output, 0, 46);  // 182 bits = 23 bytes - might need to be this: memset(output, 0, 23);
+    memset(output, 0, 23);  // 182 bits = 23 bytes - might need to be this: memset(output, 0, 23);
     
     for (size_t i = 0; i < input_bits; i++) {
         int byte_index = i / 8;
@@ -533,6 +533,10 @@ void ProFlame2Component::start_tx_(const uint8_t *data, size_t len) {
 
     // Start TX
     this->send_strobe(CC1101_STX);
+    delay(2);
+    uint8_t marc = this->read_status_register(CC1101_MARCSTATE) & 0x1F;
+    uint8_t txb  = this->read_status_register(CC1101_TXBYTES);
+    ESP_LOGI(TAG, "After STX: MARCSTATE=0x%02X TXBYTES=0x%02X", marc, txb);
 }
 
 void ProFlame2Component::service_tx_() {
