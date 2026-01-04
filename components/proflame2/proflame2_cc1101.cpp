@@ -363,14 +363,17 @@ void ProFlame2Component::transmit_command() {
 
   // Build one contiguous burst containing all repeats (rtl_433 sees one packet)
   const size_t single_len = 23;
+  const size_t gap_len = 2;   // ~16 zero bits ≈ 6.7 ms at 2400 baud (acts as inter-repeat gap)
   const size_t repeats = TX_REPEAT_TARGET;
-  const size_t total_len = single_len * repeats;
+  const size_t total_len = repeats * (single_len + gap_len);
   if (total_len > sizeof(this->tx_buf_)) {
     ESP_LOGE(TAG, "TX buffer too small for repeats: need %u bytes", static_cast<unsigned>(total_len));
     return;
   }
   for (size_t r = 0; r < repeats; r++) {
-    memcpy(this->tx_buf_ + r * single_len, encoded, single_len);
+    uint8_t *dst = this->tx_buf_ + r * (single_len + gap_len);
+    memcpy(dst, encoded, single_len);
+    memset(dst + single_len, 0x00, gap_len);  // zero gap bytes between repeats
   }
   this->tx_len_ = total_len;
   this->tx_repeat_left_ = 0;  // handled by single contiguous burst
