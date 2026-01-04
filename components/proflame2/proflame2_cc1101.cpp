@@ -132,6 +132,19 @@ void ProFlame2Component::setup() {
 }
 
 void ProFlame2Component::loop() {
+    // Fire scheduled repeats when idle
+    if (this->tx_state_ == TX_IDLE && this->tx_repeat_scheduled_) {
+        const uint32_t now = millis();
+        if (now >= this->tx_repeat_next_ms_) {
+            // If a newer command is pending, do NOT keep repeating old frames
+            if (this->tx_pending_) {
+                this->tx_repeat_scheduled_ = false;
+            } else if (this->last_frame_len_ > 0) {
+                this->tx_repeat_scheduled_ = false;
+                this->start_tx_(this->last_frame_, this->last_frame_len_);
+            }
+        }
+    }
     // Only service TX if it's actually running, otherwise yield to event loop
     if (this->tx_state_ == TX_RUNNING) {
         this->service_tx_();
@@ -462,6 +475,14 @@ void ProFlame2Component::transmit_command() {
     this->send_strobe(CC1101_SIDLE);
     this->send_strobe(0x3A);  // SFTX
 
+    // Save frame for repeats
+    memcpy(this->last_frame_, encoded, 23);
+    this->last_frame_len_ = 23;
+
+    // Reset repeat tracking (we're about to send the first one)
+    this->tx_repeat_sent_ = 1;
+    this->tx_repeat_scheduled_ = false;
+
     // Send ONLY the encoded packet (23 bytes), not repetitions!
     this->start_tx_(encoded, 23);  // CRITICAL: Only 23 bytes!
     this->last_transmission_ = now;
@@ -602,15 +623,33 @@ void ProFlame2Component::service_tx_() {
     // TX FIFO drained, and MARCSTATE back in IDLE.
     if (this->tx_pos_ >= this->tx_len_ && txbytes == 0 && (marc == 0x01 || marc == 0x00)) {
         this->send_strobe(CC1101_SIDLE);
-        this->send_strobe(0x3A);  // SFTX (clear any residual flags)
+        this->send_strobe(0x3A);  // SFTX
         this->tx_state_ = TX_IDLE;
         ESP_LOGD(TAG, "TX complete");
-
+    
+        // If a newer state is pending, don't repeat old frames
         if (this->tx_pending_) {
-            // A newer state was requested while we were transmitting.
+            // transmit_command() will be called below
+            this->tx_repeat_scheduled_ = false;
+            this->tx_repeat_sent_ = 0;
+        } else {
+            // Schedule repeats up to TX_REPEAT_COUNT
+            if (this->tx_repeat_sent_ < TX_REPEAT_COUNT) {
+                this->tx_repeat_sent_++;
+                this->tx_repeat_next_ms_ = millis() + TX_REPEAT_GAP_MS;
+                this->tx_repeat_scheduled_ = true;
+                ESP_LOGD(TAG, "Scheduling repeat %u/%u in %ums",
+                         this->tx_repeat_sent_, TX_REPEAT_COUNT, TX_REPEAT_GAP_MS);
+            } else {
+                this->tx_repeat_scheduled_ = false;
+            }
+        }
+    
+        if (this->tx_pending_) {
             this->transmit_command();
         }
     }
+    
 }
 
 // Control method implementations

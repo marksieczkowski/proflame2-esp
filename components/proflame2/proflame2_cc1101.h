@@ -194,6 +194,17 @@ class ProFlame2Component : public Component,
     size_t tx_pos_{0};
     uint32_t tx_start_ms_{0};
     bool tx_pending_{false};
+    // TX repeat support
+    static constexpr uint8_t TX_REPEAT_COUNT = 5;      // total transmissions per command
+    static constexpr uint16_t TX_REPEAT_GAP_MS = 30;   // gap between repeats
+    
+    uint8_t tx_repeat_sent_{0};        // how many repeats already sent
+    bool tx_repeat_scheduled_{false};  // next repeat waiting to fire
+    uint32_t tx_repeat_next_ms_{0};    // when to send next repeat
+
+    // Keep a copy of the last encoded frame so we can repeat it
+    uint8_t last_frame_[160]{};
+    size_t last_frame_len_{0};
 };
 
 // Switch implementations
