@@ -184,7 +184,7 @@ class ProFlame2Component : public Component,
 
   // Repeat handling
   static constexpr uint8_t TX_REPEAT_TARGET = 5;   // 5 repeats like the real remote
-  static constexpr uint16_t TX_REPEAT_GAP_MS = 5;  // ~12 bits gap (~5 ms at 2400 baud)
+  static constexpr uint16_t TX_REPEAT_GAP_MS = 4;  // ~12 bits gap (~4 ms at 2400 baud)
   uint8_t tx_repeat_left_{0};
   uint32_t tx_next_repeat_ms_{0};
 };

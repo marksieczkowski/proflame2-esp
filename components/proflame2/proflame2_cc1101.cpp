@@ -88,6 +88,13 @@ void ProFlame2Component::loop() {
   if (this->tx_state_ == TX_RUNNING) {
     this->service_tx_();
     YIELD();
+  } else if (this->tx_repeat_left_ > 0) {
+    // Keep the repeat gap short; avoid 10 ms idle delays while waiting
+#ifdef USE_ESP_IDF
+    vTaskDelay(pdMS_TO_TICKS(1));
+#else
+    delay(1);
+#endif
   } else {
 #ifdef USE_ESP_IDF
     vTaskDelay(pdMS_TO_TICKS(10));
