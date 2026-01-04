@@ -363,7 +363,7 @@ void ProFlame2Component::transmit_command() {
 
   // Build one contiguous burst containing all repeats (rtl_433 sees one packet)
   const size_t single_len = 23;
-  const size_t gap_len = 2;   // ~16 zero bits ≈ 6.7 ms at 2400 baud (acts as inter-repeat gap)
+  const size_t gap_len = 2;   // small zero gap (~6.7 ms at 2400 baud) between repeats
   const size_t repeats = TX_REPEAT_TARGET;
   const size_t total_len = repeats * (single_len + gap_len);
   if (total_len > sizeof(this->tx_buf_)) {
@@ -390,6 +390,7 @@ void ProFlame2Component::start_tx_(const uint8_t *data, size_t len) {
     this->tx_state_ = TX_ERROR;
     return;
   }
+  ESP_LOGD(TAG, "TX start request: len=%u", static_cast<unsigned>(len));
 
   // (If called from repeat loop, tx_buf_ is already populated; but safe to
   // copy)
@@ -499,6 +500,8 @@ void ProFlame2Component::service_tx_() {
     this->send_strobe(CC1101_SIDLE);
     this->send_strobe(0x3A);
     this->tx_state_ = TX_IDLE;
+    ESP_LOGD(TAG, "TX done: pos=%u len=%u", static_cast<unsigned>(this->tx_pos_),
+             static_cast<unsigned>(this->tx_len_));
 
     // Count down repeats
     if (this->tx_repeat_left_ > 0) {
