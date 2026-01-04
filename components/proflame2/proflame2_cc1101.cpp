@@ -550,6 +550,8 @@ void ProFlame2Component::start_tx_(const uint8_t *data, size_t len) {
 
     // Start TX
     this->send_strobe(CC1101_STX);
+    uint8_t marc = this->read_status_register(CC1101_MARCSTATE) & 0x1F;
+    ESP_LOGI(TAG, "MARCSTATE after STX: 0x%02X", marc);
     delay(2);
     uint8_t marc = this->read_status_register(CC1101_MARCSTATE) & 0x1F;
     uint8_t txb  = this->read_status_register(CC1101_TXBYTES);
