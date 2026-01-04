@@ -245,6 +245,13 @@ void ProFlame2Component::build_packet(uint8_t *packet) {
   uint8_t checksum1 = this->calculate_checksum(cmd1, 0x0D, 0x00);
   uint8_t checksum2 = this->calculate_checksum(cmd2, 0x00, 0x07);
 
+  ESP_LOGI(TAG,
+           "CMD summary: serial bytes=%02X %02X %02X cmd1=0x%02X cmd2=0x%02X "
+           "err1=0x%02X err2=0x%02X",
+           static_cast<uint8_t>(serial1), static_cast<uint8_t>(serial2),
+           static_cast<uint8_t>(serial3), cmd1, cmd2, checksum1, checksum2);
+  ESP_LOGI(TAG, "Serial full: 0x%08X", this->serial_number_);
+
   uint16_t words[7];
 
   words[0] = 0x1000 | (serial1 << 3) | 0x200 |
