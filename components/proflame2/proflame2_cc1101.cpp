@@ -361,17 +361,22 @@ void ProFlame2Component::transmit_command() {
            encoded[17], encoded[18], encoded[19], encoded[20], encoded[21],
            encoded[22]);
 
-  // Load tx_buf_ once; repeats will resend the same buffer
-  memcpy(this->tx_buf_, encoded, 23);
-  this->tx_len_ = 23;
+  // Build one contiguous burst containing all repeats (rtl_433 sees one packet)
+  const size_t single_len = 23;
+  const size_t repeats = TX_REPEAT_TARGET;
+  const size_t total_len = single_len * repeats;
+  if (total_len > sizeof(this->tx_buf_)) {
+    ESP_LOGE(TAG, "TX buffer too small for repeats: need %u bytes", static_cast<unsigned>(total_len));
+    return;
+  }
+  for (size_t r = 0; r < repeats; r++) {
+    memcpy(this->tx_buf_ + r * single_len, encoded, single_len);
+  }
+  this->tx_len_ = total_len;
+  this->tx_repeat_left_ = 0;  // handled by single contiguous burst
 
-  // Prime repeat counter:
-  // We are about to send the first one immediately, and then 4 more.
-  this->tx_repeat_left_ = TX_REPEAT_TARGET;
+  ESP_LOGI(TAG, "Sending single burst of %u bytes (%u repeats)", static_cast<unsigned>(this->tx_len_), static_cast<unsigned>(repeats));
 
-  ESP_LOGI(TAG, "Sending %u repeats of 23-byte frame", TX_REPEAT_TARGET);
-
-  // Start first repeat now
   this->start_tx_(this->tx_buf_, this->tx_len_);
   this->last_transmission_ = now;
 }
