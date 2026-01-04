@@ -184,7 +184,7 @@ class ProFlame2Component : public Component,
 
   // Repeat handling
   static constexpr uint8_t TX_REPEAT_TARGET = 5;   // 5 repeats like the real remote
-  static constexpr uint16_t TX_REPEAT_GAP_MS = 3;  // slightly tighter gap to merge repeats
+  static constexpr uint16_t TX_REPEAT_GAP_MS = 2;  // tighter gap to keep repeats in one burst
   uint8_t tx_repeat_left_{0};
   uint32_t tx_next_repeat_ms_{0};
 };
