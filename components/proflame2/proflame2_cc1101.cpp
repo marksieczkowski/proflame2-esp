@@ -259,20 +259,29 @@ void ProFlame2Component::build_packet(uint8_t *packet) {
            static_cast<uint8_t>(serial3), cmd1, cmd2, checksum1, checksum2);
   ESP_LOGI(TAG, "Serial full: 0x%08X", this->serial_number_);
 
+  // Build 7 words, 13 bits each: S(1) + guard(1) + data(8) + pad(1) + parity(1) + end guard(1)
+  // pad bit is 1 only on the first word; parity is over data+pad.
   uint16_t words[7];
+  auto make_word = [&](uint8_t data, bool pad_bit) -> uint16_t {
+    uint8_t parity =
+        this->calculate_parity(static_cast<uint16_t>(data) | (pad_bit ? 0x100 : 0x000));
+    uint16_t w = 0;
+    w |= (1 << 12);                                // sync 'S'
+    w |= (1 << 11);                                // start guard '1'
+    w |= (static_cast<uint16_t>(data) << 3);       // data bits
+    if (pad_bit) w |= (1 << 2);                    // pad bit
+    w |= (static_cast<uint16_t>(parity) << 1);     // parity bit
+    w |= 0x01;                                     // end guard '1'
+    return w;
+  };
 
-  words[0] = 0x1000 | (serial1 << 3) | 0x200 |
-             (calculate_parity(serial1 | 0x100) << 1) | 0x01;
-  words[1] = 0x1000 | (serial2 << 3) | (calculate_parity(serial2) << 1) | 0x01;
-  words[2] = 0x1000 | (serial3 << 3) | (calculate_parity(serial3) << 1) | 0x01;
-
-  words[3] = 0x1000 | (cmd1 << 3) | (calculate_parity(cmd1) << 1) | 0x01;
-  words[4] = 0x1000 | (cmd2 << 3) | (calculate_parity(cmd2) << 1) | 0x01;
-
-  words[5] =
-      0x1000 | (checksum1 << 3) | (calculate_parity(checksum1) << 1) | 0x01;
-  words[6] =
-      0x1000 | (checksum2 << 3) | (calculate_parity(checksum2) << 1) | 0x01;
+  words[0] = make_word(static_cast<uint8_t>(serial1), true);   // pad=1 on first word
+  words[1] = make_word(static_cast<uint8_t>(serial2), false);
+  words[2] = make_word(static_cast<uint8_t>(serial3), false);
+  words[3] = make_word(cmd1, false);
+  words[4] = make_word(cmd2, false);
+  words[5] = make_word(checksum1, false);
+  words[6] = make_word(checksum2, false);
 
   int bit_index = 0;
   for (int w = 0; w < 7; w++) {
