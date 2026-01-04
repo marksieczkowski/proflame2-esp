@@ -136,12 +136,10 @@ void ProFlame2Component::loop() {
     if (this->tx_state_ == TX_IDLE && this->tx_repeat_scheduled_) {
         const uint32_t now = millis();
         if (now >= this->tx_repeat_next_ms_) {
-            // If a newer command is pending, do NOT keep repeating old frames
-            if (this->tx_pending_) {
-                this->tx_repeat_scheduled_ = false;
-            } else if (this->last_frame_len_ > 0) {
-                this->tx_repeat_scheduled_ = false;
-                this->start_tx_(this->last_frame_, this->last_frame_len_);
+            this->tx_repeat_scheduled_ = false;
+          // If a newer command is pending, stop repeating old data
+            if (!this->tx_pending_) {
+                this->start_tx_repeat_();
             }
         }
     }
@@ -478,10 +476,8 @@ void ProFlame2Component::transmit_command() {
     // Save frame for repeats
     memcpy(this->last_frame_, encoded, 23);
     this->last_frame_len_ = 23;
-
-    // Reset repeat tracking (we're about to send the first one)
-    this->tx_repeat_sent_ = 1;
-    this->tx_repeat_scheduled_ = false;
+    this->tx_repeat_sent_ = 1;            // first send is happening now
+    this->tx_repeat_scheduled_ = false;   // clear any old schedule
 
     // Send ONLY the encoded packet (23 bytes), not repetitions!
     this->start_tx_(encoded, 23);  // CRITICAL: Only 23 bytes!
@@ -560,6 +556,30 @@ void ProFlame2Component::start_tx_(const uint8_t *data, size_t len) {
     ESP_LOGI(TAG, "After STX: MARCSTATE=0x%02X TXBYTES=0x%02X", marc, txb);
 }
 
+void ProFlame2Component::start_tx_repeat_() {
+    if (!this->spi_ready_) return;
+    if (this->last_frame_len_ == 0) return;
+    if (this->tx_state_ != TX_IDLE) return;
+
+    // Hard reset TX state each repeat
+    this->send_strobe(CC1101_SIDLE);
+    this->send_strobe(0x3A);  // SFTX
+
+    // Re-program length every time (CC1101 can get weird if PKTLEN not set after flush)
+    this->write_register(CC1101_PKTLEN, static_cast<uint8_t>(this->last_frame_len_));
+
+    // Optional but helps: recal before each repeat (remote does “fresh” bursts)
+    this->send_strobe(CC1101_SCAL);
+    #ifdef USE_ESP_IDF
+    vTaskDelay(pdMS_TO_TICKS(2));
+    #else
+    delay(2);
+    #endif
+
+    // Start TX of the cached frame
+    this->start_tx_(this->last_frame_, this->last_frame_len_);
+}
+
 void ProFlame2Component::service_tx_() {
     if (this->tx_state_ != TX_RUNNING) {
         return;
@@ -626,30 +646,24 @@ void ProFlame2Component::service_tx_() {
         this->send_strobe(0x3A);  // SFTX
         this->tx_state_ = TX_IDLE;
         ESP_LOGD(TAG, "TX complete");
-    
-        // If a newer state is pending, don't repeat old frames
         if (this->tx_pending_) {
-            // transmit_command() will be called below
+            // stop repeating old frame; we'll send the latest state next
             this->tx_repeat_scheduled_ = false;
             this->tx_repeat_sent_ = 0;
-        } else {
-            // Schedule repeats up to TX_REPEAT_COUNT
-            if (this->tx_repeat_sent_ < TX_REPEAT_COUNT) {
-                this->tx_repeat_sent_++;
-                this->tx_repeat_next_ms_ = millis() + TX_REPEAT_GAP_MS;
-                this->tx_repeat_scheduled_ = true;
-                ESP_LOGD(TAG, "Scheduling repeat %u/%u in %ums",
-                         this->tx_repeat_sent_, TX_REPEAT_COUNT, TX_REPEAT_GAP_MS);
-            } else {
-                this->tx_repeat_scheduled_ = false;
-            }
-        }
-    
-        if (this->tx_pending_) {
             this->transmit_command();
+            return;
+        }
+        // schedule repeats
+        if (this->tx_repeat_sent_ < TX_REPEAT_COUNT) {
+            this->tx_repeat_sent_++;
+            this->tx_repeat_next_ms_ = millis() + TX_REPEAT_GAP_MS;
+            this->tx_repeat_scheduled_ = true;
+            ESP_LOGD(TAG, "Scheduling repeat %u/%u in %ums",
+                     this->tx_repeat_sent_, TX_REPEAT_COUNT, TX_REPEAT_GAP_MS);
+        } else {
+            this->tx_repeat_scheduled_ = false;
         }
     }
-    
 }
 
 // Control method implementations

@@ -134,7 +134,7 @@ class ProFlame2Component : public Component,
     void write_register(uint8_t reg, uint8_t value);
     uint8_t read_status_register(uint8_t reg);
     uint8_t read_register(uint8_t reg);
-   
+
     ProFlame2Command current_state_{};
     void transmit_command();
     void build_packet(uint8_t *packet);
@@ -159,6 +159,7 @@ class ProFlame2Component : public Component,
 
     // Non-blocking TX state machine
     void start_tx_(const uint8_t *data, size_t len);
+    void start_tx_repeat_();
     void service_tx_();
     
     // Hardware pins
@@ -197,7 +198,7 @@ class ProFlame2Component : public Component,
     // TX repeat support
     static constexpr uint8_t TX_REPEAT_COUNT = 5;      // total transmissions per command
     static constexpr uint16_t TX_REPEAT_GAP_MS = 30;   // gap between repeats
-    
+
     uint8_t tx_repeat_sent_{0};        // how many repeats already sent
     bool tx_repeat_scheduled_{false};  // next repeat waiting to fire
     uint32_t tx_repeat_next_ms_{0};    // when to send next repeat
