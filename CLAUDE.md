@@ -55,7 +55,7 @@ The component has three layers:
 - **Encoding:** Thomas Manchester encoding
 - **Packet structure:** 91 bits = 7 words × 13 bits (data + parity)
 - **Checksum:** Nibble-based XOR with specific constants per word
-- **Serial number:** 4-byte value identifying the remote (default `0x12345678`; paired via fireplace pairing mode)
+- **Serial number:** 3-byte (24-bit) value identifying the remote (default `0x345678`, max `0xFFFFFF`; paired via fireplace pairing mode)
 
 ## ESPHome Component Configuration
 

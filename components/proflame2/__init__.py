@@ -7,8 +7,8 @@ from esphome.const import (
 )
 from esphome import pins
 
-DEPENDENCIES = ["spi", "switch", "number", "button", "light", "fan"]
-AUTO_LOAD = ["switch", "number", "button", "light", "fan"]
+DEPENDENCIES = ["spi", "switch", "number", "button"]
+AUTO_LOAD = ["switch", "number", "button"]
 
 proflame2_ns = cg.esphome_ns.namespace("proflame2")
 ProFlame2Component = proflame2_ns.class_(
@@ -60,7 +60,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(ProFlame2Component),
         cv.Required(CONF_CS_PIN): pins.gpio_output_pin_schema,
         cv.Optional(CONF_GDO0_PIN): pins.gpio_input_pin_schema,
-        cv.Optional(CONF_SERIAL_NUMBER, default=0x12345678): cv.hex_uint32_t,
+        # Only 24 bits are transmitted (3 serial bytes in the packet)
+        cv.Optional(CONF_SERIAL_NUMBER, default=0x345678): cv.All(
+            cv.hex_uint32_t, cv.Range(max=0xFFFFFF)
+        ),
         cv.Optional(CONF_POWER): switch.switch_schema(ProFlame2PowerSwitch),
         cv.Optional(CONF_PILOT): switch.switch_schema(ProFlame2PilotSwitch),
         cv.Optional(CONF_AUX): switch.switch_schema(ProFlame2AuxSwitch),

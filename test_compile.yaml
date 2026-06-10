@@ -1,0 +1,51 @@
+# Minimal secret-free config for CI/local compile verification only.
+# Not for flashing.
+esphome:
+  name: pf2-compile-test
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: VERBOSE
+  logs:
+    proflame2: VERBOSE
+
+spi:
+  clk_pin: GPIO18
+  miso_pin: GPIO19
+  mosi_pin: GPIO23
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [proflame2]
+
+proflame2:
+  id: fireplace
+  cs_pin: GPIO21
+  gdo0_pin: GPIO22
+  serial_number: 0xAA9402
+
+  power:
+    name: "Power"
+  pilot:
+    name: "Pilot Mode"
+  aux:
+    name: "Aux Power"
+  secondary_flame:
+    name: "Secondary Flame"
+  flame:
+    name: "Flame Height"
+    mode: slider
+  fan:
+    name: "Fan Speed"
+    mode: slider
+  light:
+    name: "Light Level"
+    mode: slider
+  send:
+    name: "Send Commands"

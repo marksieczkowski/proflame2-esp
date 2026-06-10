@@ -2,6 +2,8 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 
+#include <cinttypes>
+
 #ifdef USE_ESP_IDF
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -13,7 +15,7 @@
 namespace esphome {
 namespace proflame2 {
 
-static const char *TAG = "proflame2";
+static const char *const TAG = "proflame2";
 
 // CC1101 Configuration for 314.973 MHz OOK at 2400 baud
 static const uint8_t CC1101_CONFIG[][2] = {
@@ -103,19 +105,14 @@ void ProFlame2Component::loop() {
     this->service_tx_();
     YIELD();
   } else if (this->tx_repeat_left_ > 0) {
-    // Keep the repeat gap short; avoid 10 ms idle delays while waiting
+    // Keep the repeat gap short; avoid long idle delays while waiting
 #ifdef USE_ESP_IDF
     vTaskDelay(pdMS_TO_TICKS(1));
 #else
     delay(1);
 #endif
-  } else {
-#ifdef USE_ESP_IDF
-    vTaskDelay(pdMS_TO_TICKS(10));
-#else
-    delay(10);
-#endif
   }
+  // No delay when idle: blocking here stalls the whole ESPHome main loop.
 }
 
 void ProFlame2Component::dump_config() {
@@ -124,7 +121,7 @@ void ProFlame2Component::dump_config() {
     ESP_LOGW(TAG, "SPI not ready yet, skipping CC1101 reads");
     return;
   }
-  ESP_LOGCONFIG(TAG, "  Serial Number: 0x%08X", this->serial_number_);
+  ESP_LOGCONFIG(TAG, "  Serial Number: 0x%06" PRIX32, this->serial_number_);
   if (this->gdo0_pin_ != nullptr) {
     LOG_PIN("  GDO0 Pin: ", this->gdo0_pin_);
   }
@@ -263,7 +260,7 @@ void ProFlame2Component::build_packet(uint8_t *packet) {
            "err1=0x%02X err2=0x%02X",
            serial1, serial2,
            serial3, cmd1, cmd2, checksum1, checksum2);
-  ESP_LOGD(TAG, "Serial full: 0x%08X", this->serial_number_);
+  ESP_LOGD(TAG, "Serial: 0x%06" PRIX32, this->serial_number_);
 
   // Build 7 words, 13 bits each: S(1) + guard(1) + data(8) + pad(1) + parity(1) + end guard(1)
   // pad bit is 1 only on the first word; parity is over data+pad.
@@ -351,9 +348,10 @@ void ProFlame2Component::transmit_command() {
     return;
   }
 
-  // If currently transmitting, just mark pending (latest state wins)
+  // If currently transmitting, re-queue; loop() will send the latest state
+  // once TX finishes and the minimum interval has elapsed.
   if (this->tx_state_ == TX_RUNNING || this->tx_repeat_left_ > 0) {
-    this->tx_pending_ = true;
+    this->send_pending_ = true;
     return;
   }
 
@@ -416,14 +414,15 @@ void ProFlame2Component::transmit_command() {
 void ProFlame2Component::start_tx_(const uint8_t *data, size_t len) {
   if (len == 0 || len > sizeof(this->tx_buf_)) {
     ESP_LOGE(TAG, "TX buffer size invalid: %u", static_cast<unsigned>(len));
-    this->tx_state_ = TX_ERROR;
+    this->tx_state_ = TX_IDLE;
     return;
   }
   ESP_LOGD(TAG, "TX start request: len=%u", static_cast<unsigned>(len));
 
-  // (If called from repeat loop, tx_buf_ is already populated; but safe to
-  // copy)
-  memcpy(this->tx_buf_, data, len);
+  // Callers usually pass tx_buf_ itself; self-copy is UB, so skip it.
+  if (data != this->tx_buf_) {
+    memcpy(this->tx_buf_, data, len);
+  }
   this->tx_len_ = len;
   this->tx_pos_ = 0;
   this->tx_start_ms_ = millis();
@@ -483,7 +482,8 @@ void ProFlame2Component::service_tx_() {
              marc, txbytes_raw, underflow);
     this->send_strobe(CC1101_SIDLE);
     this->send_strobe(CC1101_SFTX);
-    this->tx_state_ = TX_ERROR;
+    // Recover to idle so the next queued send still works; no auto-retry.
+    this->tx_state_ = TX_IDLE;
     this->tx_repeat_left_ = 0;
     return;
   }
@@ -494,7 +494,8 @@ void ProFlame2Component::service_tx_() {
              static_cast<unsigned>(this->tx_len_));
     this->send_strobe(CC1101_SIDLE);
     this->send_strobe(CC1101_SFTX);
-    this->tx_state_ = TX_ERROR;
+    // Recover to idle so the next queued send still works; no auto-retry.
+    this->tx_state_ = TX_IDLE;
     this->tx_repeat_left_ = 0;
     return;
   }
@@ -547,13 +548,8 @@ void ProFlame2Component::service_tx_() {
     }
 
     ESP_LOGD(TAG, "TX complete (all repeats done)");
-
-    // If something changed while we were blasting repeats, send latest state
-    // now
-    if (this->tx_pending_) {
-      this->tx_pending_ = false;
-      this->transmit_command();
-    }
+    // If a send was queued while transmitting, loop() picks up send_pending_
+    // with proper interval gating.
   }
 }
 

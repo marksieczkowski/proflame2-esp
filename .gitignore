@@ -2,3 +2,6 @@
 
 # HA Secerts File
 secrets.yaml
+# ESPHome build artifacts
+.esphome/
+__pycache__/

@@ -145,7 +145,7 @@ You have three options to get a working serial number:
 2. [rtl_433](https://github.com/merbanan/rtl_433) will decode the ProFlame 2 signals for you in realtime
 
 ### Option 2: Pair a new serial (Caution your old remote will stop working because you can only have one remote paired to the fireplace)
-1. Use the default `0x12345678` or generate a random 24-bit number
+1. Use the default `0x345678` or generate a random 24-bit number (max `0xFFFFFF` — the packet only carries 3 serial bytes)
 2. Put your fireplace receiver in pairing mode (see manual)
 3. Send a command with the ESP32
 4. The receiver should accept and pair with this new serial

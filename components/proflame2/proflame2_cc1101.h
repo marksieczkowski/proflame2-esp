@@ -1,11 +1,8 @@
 #pragma once
 
-#include "esphome.h"
 #include "esphome/core/component.h"
 #include "esphome/components/spi/spi.h"
 #include "esphome/components/switch/switch.h"
-#include "esphome/components/light/light_output.h"
-#include "esphome/components/fan/fan.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/button/button.h"
 
@@ -159,7 +156,8 @@ class ProFlame2Component : public Component,
   GPIOPin *gdo0_pin_{nullptr};
 
   // Configuration
-  uint32_t serial_number_{0x12345678};
+  // Only 24 bits are transmitted (3 serial bytes in the packet).
+  uint32_t serial_number_{0x345678};
 
   // Component references
   switch_::Switch *power_switch_{nullptr};
@@ -186,13 +184,12 @@ class ProFlame2Component : public Component,
   static const uint32_t MIN_TRANSMISSION_INTERVAL = 200;
 
   // TX state
-  enum TxState : uint8_t { TX_IDLE = 0, TX_RUNNING = 1, TX_ERROR = 2 };
+  enum TxState : uint8_t { TX_IDLE = 0, TX_RUNNING = 1 };
   TxState tx_state_{TX_IDLE};
   uint8_t tx_buf_[160]{};
   size_t tx_len_{0};
   size_t tx_pos_{0};
   uint32_t tx_start_ms_{0};
-  bool tx_pending_{false};
 
   // Repeat handling
   static constexpr uint8_t TX_REPEAT_TARGET = 5;   // 5 repeats like the real remote
