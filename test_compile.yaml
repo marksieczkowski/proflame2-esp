@@ -38,6 +38,8 @@ proflame2:
     name: "Aux Power"
   secondary_flame:
     name: "Secondary Flame"
+  thermostat:
+    name: "Thermostat"
   flame:
     name: "Flame Height"
     mode: slider

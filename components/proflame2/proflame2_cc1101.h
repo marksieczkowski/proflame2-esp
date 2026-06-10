@@ -280,6 +280,17 @@ class ProFlame2SecondaryFlameSwitch : public switch_::Switch, public Component {
   ProFlame2Component *parent_;
 };
 
+class ProFlame2ThermostatSwitch : public switch_::Switch, public Component {
+ public:
+  void set_parent(ProFlame2Component *parent) { this->parent_ = parent; }
+  void write_state(bool state) override {
+    this->parent_->set_thermostat(state);
+  }
+
+ protected:
+  ProFlame2Component *parent_;
+};
+
 class ProFlame2SendButton : public button::Button, public Component {
  public:
   void set_parent(ProFlame2Component *parent) { this->parent_ = parent; }
