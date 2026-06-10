@@ -72,6 +72,34 @@ void ProFlame2Component::setup() {
       .aux_power = false,
       .flame_level = 0};
 
+  // Publish initial states so HA shows 0/off after a reboot instead of
+  // "unknown". The RF link is one-way, so the fireplace's real state can't
+  // be read back; report what current_state_ would transmit.
+  if (this->power_switch_) {
+    this->power_switch_->publish_state(false);
+  }
+  if (this->pilot_switch_) {
+    this->pilot_switch_->publish_state(false);
+  }
+  if (this->aux_switch_) {
+    this->aux_switch_->publish_state(false);
+  }
+  if (this->secondary_flame_switch_) {
+    this->secondary_flame_switch_->publish_state(false);
+  }
+  if (this->thermostat_switch_) {
+    this->thermostat_switch_->publish_state(false);
+  }
+  if (this->flame_number_) {
+    this->flame_number_->publish_state(0);
+  }
+  if (this->fan_number_) {
+    this->fan_number_->publish_state(0);
+  }
+  if (this->light_number_) {
+    this->light_number_->publish_state(0);
+  }
+
   ESP_LOGCONFIG(TAG, "ProFlame 2 setup complete");
 }
 

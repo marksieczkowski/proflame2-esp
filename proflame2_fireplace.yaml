@@ -79,9 +79,19 @@ proflame2:
     icon: "mdi:fan"
     mode: slider
 
+  light:
+    name: "Light Level"
+    icon: "mdi:lightbulb"
+    mode: slider
+
   secondary_flame:
     name: "Secondary Flame"
     icon: "mdi:fire"
+
+  thermostat:
+    name: "Thermostat"
+    icon: "mdi:thermostat"
+    entity_category: config
 
   send:
     name: "Send Commands"

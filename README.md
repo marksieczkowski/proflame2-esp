@@ -123,9 +123,19 @@ proflame2:
     icon: "mdi:fan"
     mode: slider
 
+  light:
+    name: "Light Level"
+    icon: "mdi:lightbulb"
+    mode: slider
+
   secondary_flame:
     name: "Secondary Flame"
     icon: "mdi:fire"
+
+  thermostat:
+    name: "Thermostat"
+    icon: "mdi:thermostat"
+    entity_category: config
 
   send:
     name: "Send Commands"
@@ -159,6 +169,7 @@ Once configured and running, the fireplace will appear in Home Assistant with:
 - `switch.fireplace_pilot_mode` - IPI/CPI mode selection
 - `switch.fireplace_aux_power` - Auxiliary outlet control
 - `switch.fireplace_secondary_flame` - Secondary (aka Front) Flame on/off
+- `switch.fireplace_thermostat` - Thermostat mode on/off
 - `number.fireplace_flame_height` - Flame height (0-6)
 - `number.fireplace_fan_speed` - Fan speed (0-6)
 - `number.fireplace_light_level` - Light brightness (0-6)

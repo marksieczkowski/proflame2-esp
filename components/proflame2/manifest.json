@@ -5,7 +5,7 @@
   "dependencies": ["spi", "switch", "number", "button"],
   "codeowners": ["@marksieczkowski","@j2deen"],
   "requirements": [],
-  "version": "3.0.2",
+  "version": "3.1.0",
   "author": "Mark Sieczkowski, Jay Deen",
   "license": "MIT",
   "description": "Control ProFlame 2 fireplace systems using ESP32 and CC1101 RF module",
@@ -19,6 +19,7 @@
     "Fan speed control (0-6 levels)",
     "Light level control (0-6 levels)",
     "Secondary flame control",
+    "Thermostat mode control",
     "IPI/CPI pilot mode selection",
     "Auxiliary power control",
     "Home Assistant integration",
@@ -37,6 +38,7 @@
     "fan": "optional",
     "light": "optional",
     "secondary_flame": "optional",
+    "thermostat": "optional",
     "send": "optional"
   }
 }
